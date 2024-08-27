@@ -1,0 +1,35 @@
+name: Deploy and Inject Secrets
+
+on:
+  push:
+    branches:
+      - main  # Trigger the workflow on a push to the main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Inject Secrets into Environment Variables
+      run: |
+        echo "Injecting secrets into environment variables..."
+        echo "REACT_APP_BIN_ID=${{ secrets.BIN_ID }}" >> .env
+        echo "REACT_APP_X_ACCESS_KEY=${{ secrets.X_ACCESS_KEY }}" >> .env
+        echo "REACT_APP_X_MASTER_KEY=${{ secrets.X_MASTER_KEY }}" >> .env
+
+    - name: Build the application (if applicable)
+      run: |
+        # If your project requires a build step (e.g., React, Vue.js), include it here.
+        # For example, if using a Node.js project:
+        # npm install
+        # npm run build
+        echo "Building the application..."
+
+    - name: Deploy the application
+      run: |
+        # Here you would typically deploy your built app or static site
+        # For example, you could upload it to a server, S3, or use a deployment service
+        echo "Deployment step goes here."
