@@ -158,6 +158,13 @@
 </div>
 
 <script>
+// Injected environment variables
+const BIN_ID = process.env.REACT_APP_BIN_ID;
+const API_KEY = process.env.REACT_APP_X_ACCESS_KEY;
+const MASTER_KEY = process.env.REACT_APP_X_MASTER_KEY;
+
+const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+    
 // JSONbin.io configuration
 const BIN_ID = 'REACT_APP_BIN_ID'; // Replace with your bin's ID from the environment variable
 const API_KEY = 'REACT_APP_X_ACCESS_KEY'; // Replace with your API key from the environment variable
