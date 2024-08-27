@@ -1,8 +1,8 @@
-<html><head>
+<html>
+<head>
 <title>Subject Completion Tracker</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
 <style>
     :root {
         --background: #2c2c2c;
@@ -205,7 +205,7 @@ editSaveBtn.addEventListener('click', () => {
     
     if (!isEditing) {
         saveData();
-        updateCSV();
+        updateJSON();
     }
 });
 
@@ -226,110 +226,56 @@ function saveData() {
 }
 
 function loadData() {
-    const savedData = localStorage.getItem('subjectData');
-    if (savedData) {
-        const data = JSON.parse(savedData);
-        data.forEach((item, index) => {
-            document.getElementById(`check${index}`).checked = item.completed;
-            document.getElementById(`comment${index}`).value = item.comment;
+    const jsonUrl = 'https://raw.githubusercontent.com/Friendly-Neighbourhood-Insomniac/Tutorbot-progress-tracker/main/db.json';
+
+    fetch(jsonUrl)
+        .then(response => response.json())
+        .then(data => {
+            data.forEach((item, index) => {
+                document.getElementById(`check${index}`).checked = item.completed;
+                document.getElementById(`comment${index}`).value = item.comment;
+            });
+        })
+        .catch(error => {
+            console.error('Error loading JSON:', error);
         });
-    }
 }
 
 // Load saved data when the page loads
 loadData();
 
-// Function to update the CSV file
-function updateCSV() {
+// Function to update the JSON file
+function updateJSON() {
     const data = subjects.map((subject, index) => ({
-        Subject: subject,
-        Completed: document.getElementById(`check${index}`).checked ? 'Yes' : 'No',
-        Comments: document.getElementById(`comment${index}`).value
+        subject,
+        completed: document.getElementById(`check${index}`).checked,
+        comment: document.getElementById(`comment${index}`).value
     }));
 
-    const csv = Papa.unparse(data);
-    
-    // In a real-world scenario, you would send this CSV data to your server
-    // Here, we'll simulate updating the CSV by logging it to the console
-    console.log("Updated CSV data:");
-    console.log(csv);
+    const jsonContent = JSON.stringify(data, null, 2);
+    const encodedJson = btoa(jsonContent);
 
-    // In practice, you would use an API call to update the CSV file on GitHub
-    // For example:
-    /*
-    fetch('https://api.github.com/repos/Friendly-Neighbourhood-Insomniac/Tutorbot-progress-tracker/contents/db.csv', {
+    fetch('https://api.github.com/repos/Friendly-Neighbourhood-Insomniac/Tutorbot-progress-tracker/contents/db.json', {
         method: 'PUT',
         headers: {
-            'Authorization': 'token YOUR_GITHUB_TOKEN',
+            'Authorization': 'token YOUR_GITHUB_TOKEN', // Replace with your GitHub token
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
             message: 'Update subject completion data',
-            content: btoa(csv),
-            sha: 'CURRENT_FILE_SHA'
+            content: encodedJson,
+            sha: 'CURRENT_FILE_SHA' // Replace with the SHA of the existing file
         })
     })
     .then(response => response.json())
-    .then(data => console.log('CSV updated successfully'))
-    .catch(error => console.error('Error updating CSV:', error));
-    */
+    .then(data => console.log('JSON updated successfully'))
+    .catch(error => console.error('Error updating JSON:', error));
 }
 
 // Download PDF report
 const downloadBtn = document.getElementById('downloadBtn');
 downloadBtn.addEventListener('click', () => {
-    // In a real-world scenario, you would fetch the latest data from the CSV file
-    // Here, we'll use the local data for demonstration
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    // Add title and timestamp
-    doc.setFontSize(18);
-    doc.text('Subject Completion Report', 14, 22);
-    doc.setFontSize(12);
-    const timestamp = new Date().toLocaleString();
-    doc.text(`Generated on: ${timestamp}`, 14, 32);
-
-    // Prepare table data
-    const tableData = subjects.map((subject, index) => [
-        subject,
-        document.getElementById(`check${index}`).checked ? 'Completed' : 'Not Completed',
-        document.getElementById(`comment${index}`).value
-    ]);
-
-    // Add table to PDF
-    doc.autoTable({
-        head: [['Subject', 'Completion Status', 'Comments']],
-        body: tableData,
-        startY: 40,
-        styles: { fontSize: 10, cellPadding: 3 },
-        headStyles: { fillColor: [74, 74, 74] },
-        alternateRowStyles: { fillColor: [240, 240, 240] },
-    });
-
-    // Save the PDF
-    doc.save(`Subject_Completion_Report_${new Date().toISOString().slice(0,10)}.pdf`);
-});
-
-// Function to fetch the latest data from the CSV file
-// In a real-world scenario, you would implement this function
-function fetchLatestCSVData() {
-    // Simulated fetch operation
-    return new Promise((resolve, reject) => {
-        // In practice, you would fetch the CSV file from GitHub here
-        // For now, we'll resolve with the current local data
-        const data = subjects.map((subject, index) => ({
-            Subject: subject,
-            Completed: document.getElementById(`check${index}`).checked ? 'Yes' : 'No',
-            Comments: document.getElementById(`comment${index}`).value
-        }));
-        resolve(data);
-    });
-}
-
-// Update the download function to use the latest CSV data
-downloadBtn.addEventListener('click', () => {
-    fetchLatestCSVData().then(data => {
+    fetchLatestJSONData().then(data => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
@@ -342,9 +288,9 @@ downloadBtn.addEventListener('click', () => {
 
         // Prepare table data
         const tableData = data.map(item => [
-            item.Subject,
-            item.Completed,
-            item.Comments
+            item.subject,
+            item.completed ? 'Completed' : 'Not Completed',
+            item.comment
         ]);
 
         // Add table to PDF
@@ -360,12 +306,24 @@ downloadBtn.addEventListener('click', () => {
         // Save the PDF
         doc.save(`Subject_Completion_Report_${new Date().toISOString().slice(0,10)}.pdf`);
     }).catch(error => {
-        console.error('Error fetching latest CSV data:', error);
+        console.error('Error fetching latest JSON data:', error);
         alert('Failed to generate report with latest data. Using local data instead.');
         // Fallback to using local data
         // ... (previous PDF generation code) ...
     });
 });
+
+// Function to fetch the latest data from the JSON file
+function fetchLatestJSONData() {
+    const jsonUrl = 'https://raw.githubusercontent.com/Friendly-Neighbourhood-Insomniac/Tutorbot-progress-tracker/main/db.json';
+    
+    return fetch(jsonUrl)
+        .then(response => response.json())
+        .catch(error => {
+            console.error('Error fetching JSON:', error);
+            return [];
+        });
+}
 </script>
 </body>
 </html>
